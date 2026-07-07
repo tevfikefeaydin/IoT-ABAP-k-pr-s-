@@ -73,7 +73,7 @@ CLASS zcl_iot_dashboard IMPLEMENTATION.
       " --- recent alarms ---------------------------------------------
       DATA(alarm_tab) = page->table(
         items       = client->_bind( mt_alarms )
-        headertext  = 'Aktif / Son Alarmlar' ).
+        headertext  = |Aktif / Son Alarmlar ({ lines( mt_alarms ) })| ).
       alarm_tab->columns(
         )->column( )->text( 'Zaman'    )->get_parent(
         )->column( )->text( 'Cihaz'    )->get_parent(
@@ -90,7 +90,7 @@ CLASS zcl_iot_dashboard IMPLEMENTATION.
       " --- recent readings -------------------------------------------
       DATA(tab) = page->table(
         items       = client->_bind( mt_rows )
-        headertext  = 'Son Okumalar' ).
+        headertext  = |Son Okumalar ({ lines( mt_rows ) })| ).
       tab->columns(
         )->column( )->text( 'Cihaz'         )->get_parent(
         )->column( )->text( 'Sensör'        )->get_parent(

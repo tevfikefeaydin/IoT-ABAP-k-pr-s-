@@ -88,6 +88,9 @@ Gelen her okuma, cihaz başına yapılandırılabilir eşiklere (`ZTIOT_THRESH`)
 │   └── abap2ui5/              Pano (okumalar + alarmlar)
 │       ├── zcl_iot_dashboard.clas.abap
 │       └── README.md
+├── viewer/                    Bağımsız tek-dosya HTML pano (SAP gerekmez)
+│   ├── index.html             demo modu + gerçek endpoint'e bağlanır
+│   └── README.md
 ├── tools/                     ESP32 olmadan test için
 │   ├── send_sample.sh         curl ile örnek POST
 │   └── simulate.py            Rastgele okuma üreten simülatör
@@ -120,8 +123,9 @@ pio run -t upload && pio device monitor
 ```
 
 ### 4. Görselleştir
-- abap2UI5: `abap/abap2ui5/README.md`
-- Fiori Elements: `abap/rap/README.md` (OData V4 service binding)
+- **En hızlı (SAP gerekmez):** `viewer/index.html`'i tarayıcıda açın — demo modunda hemen çalışır, hazır olunca endpoint'e bağlanır.
+- **abap2UI5** (SAP içinde saf-ABAP pano): `abap/abap2ui5/README.md`
+- **Fiori Elements** (OData V4 service binding): `abap/rap/README.md`
 
 ## REST sözleşmesi (özet)
 
