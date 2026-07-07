@@ -1,0 +1,15 @@
+# ESP32 / PlatformIO
+esp32/.pio/
+esp32/.vscode/
+esp32/src/config.h        # device secrets — never commit
+
+# Python tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,4 @@
+@EndUserText.label: 'IoT Reading OData Service'
+define service ZUI_IOT_READING {
+  expose ZC_IOT_READING as IoTReading;
+}
