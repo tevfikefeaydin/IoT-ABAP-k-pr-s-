@@ -163,8 +163,10 @@ CLASS zcl_iot_rest_handler IMPLEMENTATION.
 
     DATA(lv_device)  = io_server->request->get_form_field( 'device_id' ).
     DATA(lv_type)    = io_server->request->get_form_field( 'type' ).
-    DATA(lv_limit_c) = io_server->request->get_form_field( 'limit' ).
-    IF lv_limit_c IS NOT INITIAL.
+    DATA(lv_limit_c) = condense( io_server->request->get_form_field( 'limit' ) ).
+    " Only convert when it is purely numeric and short enough to fit an i;
+    " a non-numeric value like ?limit=abc must not raise a conversion dump.
+    IF lv_limit_c IS NOT INITIAL AND lv_limit_c CO '0123456789' AND strlen( lv_limit_c ) <= 4.
       lv_limit = lv_limit_c.
     ENDIF.
     IF lv_limit <= 0 OR lv_limit > 1000.
