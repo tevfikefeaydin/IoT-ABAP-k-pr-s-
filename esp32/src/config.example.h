@@ -17,7 +17,8 @@
 
 // Logical id for this device (becomes deviceId in the JSON payload)
 #define DEVICE_ID       "esp32-coldroom-01"
-#define SENSOR_TYPE     "DHT22"
+// NOTE: the sensor model reported as "sensorType" is set by the build flag
+// (-D SENSOR_DHT22 / SENSOR_SHT31 / SENSOR_DS18B20 in platformio.ini), not here.
 
 // ---- Authentication ---------------------------------------------------------
 // SICF services usually require Basic auth (a dedicated technical/service user).
@@ -31,7 +32,12 @@
 
 // ---- Sampling ---------------------------------------------------------------
 #define SEND_INTERVAL_MS   60000UL   // one reading per minute
-#define DHT_PIN            4         // GPIO the DHT22 data pin is wired to
+
+// ---- Sensor pins / address (set the one matching your build flag) -----------
+#define DHT_PIN            4         // DHT22 data pin
+#define DS18B20_PIN        4         // DS18B20 1-Wire data pin (4.7k pull-up to 3V3)
+#define SHT31_ADDR         0x44      // SHT31 I2C address (0x44 default, 0x45 if ADDR->VCC)
+                                     // SHT31 uses the ESP32 I2C bus: SDA=GPIO21, SCL=GPIO22
 
 // ---- Alarm indicator --------------------------------------------------------
 // The ABAP endpoint returns {"...","alarms":N}. When N>0 (a threshold was

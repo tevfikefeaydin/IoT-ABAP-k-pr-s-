@@ -80,20 +80,25 @@ CLASS zcl_iot_alarm_check IMPLEMENTATION.
     ENDIF.
 
     " --- humidity ------------------------------------------------------
-    IF iv_humidity > ls_t-hum_max.
-      APPEND VALUE #(
-        alarm_type = 'HIGH_HUM'
-        severity   = 'WARN'
-        measured   = iv_humidity
-        threshold  = ls_t-hum_max
-        message    = |Humidity { iv_humidity } above maximum { ls_t-hum_max }| ) TO rt_alarm.
-    ELSEIF iv_humidity < ls_t-hum_min.
-      APPEND VALUE #(
-        alarm_type = 'LOW_HUM'
-        severity   = 'WARN'
-        measured   = iv_humidity
-        threshold  = ls_t-hum_min
-        message    = |Humidity { iv_humidity } below minimum { ls_t-hum_min }| ) TO rt_alarm.
+    " Temperature-only sensors (e.g. DS18B20) send no humidity; it arrives
+    " as 0, which is physically implausible in a cold room. Treat <= 0 as
+    " "not measured" and skip humidity alarms so it can't fire a false LOW_HUM.
+    IF iv_humidity > 0.
+      IF iv_humidity > ls_t-hum_max.
+        APPEND VALUE #(
+          alarm_type = 'HIGH_HUM'
+          severity   = 'WARN'
+          measured   = iv_humidity
+          threshold  = ls_t-hum_max
+          message    = |Humidity { iv_humidity } above maximum { ls_t-hum_max }| ) TO rt_alarm.
+      ELSEIF iv_humidity < ls_t-hum_min.
+        APPEND VALUE #(
+          alarm_type = 'LOW_HUM'
+          severity   = 'WARN'
+          measured   = iv_humidity
+          threshold  = ls_t-hum_min
+          message    = |Humidity { iv_humidity } below minimum { ls_t-hum_min }| ) TO rt_alarm.
+      ENDIF.
     ENDIF.
 
     IF rt_alarm IS INITIAL.

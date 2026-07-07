@@ -17,7 +17,7 @@ Her ikisi de geçerli değilse `401 Unauthorized` döner.
 | `deviceId` | string(≤30) | ✓ | Cihaz kimliği |
 | `sensorType` | string(≤20) | | Sensör tipi (ör. `DHT22`) |
 | `temperature` | number | | °C (2 ondalık) |
-| `humidity` | number | | % (2 ondalık) |
+| `humidity` | number | | % (2 ondalık). Yalnızca-sıcaklık sensörlerinde (DS18B20) atlanır → nem alarmı üretilmez |
 | `recordedAt` | string | | UTC ISO-8601 (`2026-07-07T10:20:30Z`). Yoksa sunucu zamanı kullanılır. |
 
 Örnek:

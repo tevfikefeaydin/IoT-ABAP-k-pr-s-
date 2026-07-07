@@ -1,24 +1,84 @@
 // -----------------------------------------------------------------------------
 // ESP32 → ABAP REST IoT bridge — firmware
 //
-// Reads temperature/humidity from a DHT22 and POSTs a JSON reading to an ABAP
+// Reads temperature/humidity from a sensor and POSTs a JSON reading to an ABAP
 // REST endpoint (classic SICF handler or modern ABAP Cloud HTTP service).
+//
+// Sensor is selected at BUILD TIME via a flag in platformio.ini:
+//     -D SENSOR_DHT22     (default)  temp + humidity, cheap
+//     -D SENSOR_SHT31                temp + humidity, I2C, cold-room grade
+//     -D SENSOR_DS18B20              temp only, waterproof probe
 //
 // Flow:  WiFi connect → NTP sync → loop{ read sensor → build JSON → HTTPS POST }
 //
 // Payload (camelCase so /ui2/cl_json pretty_mode=camel_case maps it 1:1):
-//   { "deviceId", "sensorType", "temperature", "humidity", "recordedAt" }
+//   { "deviceId", "sensorType", "temperature", "humidity"?, "recordedAt"? }
+//   humidity is omitted for temperature-only sensors (DS18B20).
 // -----------------------------------------------------------------------------
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include <DHT.h>
 #include <time.h>
 #include "config.h"
 
-DHT dht(DHT_PIN, DHT22);
+// ---- sensor selection ------------------------------------------------------
+#if !defined(SENSOR_DHT22) && !defined(SENSOR_SHT31) && !defined(SENSOR_DS18B20)
+  #define SENSOR_DHT22   // default when no build flag is set
+#endif
+
+#if defined(SENSOR_DHT22)
+  #include <DHT.h>
+  static DHT dht(DHT_PIN, DHT22);
+  static const char* SENSOR_MODEL = "DHT22";
+#elif defined(SENSOR_SHT31)
+  #include <Wire.h>
+  #include <Adafruit_SHT31.h>
+  static Adafruit_SHT31 sht31 = Adafruit_SHT31();
+  static const char* SENSOR_MODEL = "SHT31";
+#elif defined(SENSOR_DS18B20)
+  #include <OneWire.h>
+  #include <DallasTemperature.h>
+  static OneWire oneWire(DS18B20_PIN);
+  static DallasTemperature ds18b20(&oneWire);
+  static const char* SENSOR_MODEL = "DS18B20";
+#endif
+
+// ---- sensor abstraction ----------------------------------------------------
+
+static void sensorSetup() {
+#if defined(SENSOR_DHT22)
+  dht.begin();
+#elif defined(SENSOR_SHT31)
+  Wire.begin();
+  if (!sht31.begin(SHT31_ADDR)) {
+    Serial.println("[sht31] not found — check I2C wiring / address");
+  }
+#elif defined(SENSOR_DS18B20)
+  ds18b20.begin();
+#endif
+  Serial.printf("[sensor] model=%s\n", SENSOR_MODEL);
+}
+
+// Reads temperature (°C) and humidity (%). humidity is set to NAN for
+// temperature-only sensors. Returns false on a failed read.
+static bool sensorRead(float& temperature, float& humidity) {
+#if defined(SENSOR_DHT22)
+  temperature = dht.readTemperature();
+  humidity    = dht.readHumidity();
+  return !(isnan(temperature) || isnan(humidity));
+#elif defined(SENSOR_SHT31)
+  temperature = sht31.readTemperature();
+  humidity    = sht31.readHumidity();
+  return !(isnan(temperature) || isnan(humidity));
+#elif defined(SENSOR_DS18B20)
+  ds18b20.requestTemperatures();
+  temperature = ds18b20.getTempCByIndex(0);   // -127 (DEVICE_DISCONNECTED_C) on error
+  humidity    = NAN;
+  return temperature > -100.0f;
+#endif
+}
 
 // ---- helpers ---------------------------------------------------------------
 
@@ -70,9 +130,11 @@ static String isoTimestamp() {
 static String buildPayload(float temperature, float humidity) {
   JsonDocument doc;
   doc["deviceId"]    = DEVICE_ID;
-  doc["sensorType"]  = SENSOR_TYPE;
+  doc["sensorType"]  = SENSOR_MODEL;
   doc["temperature"] = serialized(String(temperature, 2));  // 2 decimals, no quotes
-  doc["humidity"]    = serialized(String(humidity, 2));
+  if (!isnan(humidity)) {
+    doc["humidity"] = serialized(String(humidity, 2));      // omit for temp-only sensors
+  }
   String ts = isoTimestamp();
   if (ts.length()) doc["recordedAt"] = ts;
   String out;
@@ -127,7 +189,7 @@ void setup() {
   Serial.println("\n[boot] ESP32 → ABAP IoT bridge");
   pinMode(ALARM_LED_PIN, OUTPUT);
   digitalWrite(ALARM_LED_PIN, LOW);
-  dht.begin();
+  sensorSetup();
   connectWifi();
   syncTime();
 }
@@ -135,11 +197,9 @@ void setup() {
 void loop() {
   connectWifi();  // reconnect if the link dropped
 
-  float temperature = dht.readTemperature();  // °C
-  float humidity    = dht.readHumidity();     // %
-
-  if (isnan(temperature) || isnan(humidity)) {
-    Serial.println("[dht] read failed — skipping this cycle");
+  float temperature = NAN, humidity = NAN;
+  if (!sensorRead(temperature, humidity)) {
+    Serial.println("[sensor] read failed — skipping this cycle");
   } else {
     String payload = buildPayload(temperature, humidity);
     Serial.printf("[send] %s\n", payload.c_str());
