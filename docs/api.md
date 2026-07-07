@@ -34,7 +34,7 @@ Her ikisi de geçerli değilse `401 Unauthorized` döner.
 ### Yanıtlar
 | Durum | Gövde | Anlamı |
 |---|---|---|
-| `201 Created` | `{"status":"ok","readingId":"..."}` | Kaydedildi |
+| `201 Created` | `{"status":"ok","readingId":"...","alarms":N}` | Kaydedildi; `N` = bu okumada tetiklenen eşik alarmı sayısı |
 | `400 Bad Request` | `{"status":"error","message":"deviceId is required"}` | Eksik alan |
 | `401 Unauthorized` | `{"status":"error","message":"unauthorized"}` | Kimlik/anahtar hatalı |
 | `405 Method Not Allowed` | `{"status":"error","message":"method not allowed"}` | Desteklenmeyen metod |
@@ -47,12 +47,17 @@ Sorgu parametreleri:
 |---|---|---|
 | `device_id` | (hepsi) | Yalnızca bu cihaz |
 | `limit` | 50 | Satır sayısı (1–1000) |
+| `type` | `readings` | `alarms` verilirse okumalar yerine son alarmlar döner |
 
-Örnek:
+Örnekler:
 ```
 GET /sap/ziot/ingest?device_id=esp32-coldroom-01&limit=20
+GET /sap/ziot/ingest?type=alarms&limit=10
 ```
-Yanıt: `200 OK` + okuma nesnelerinden oluşan JSON dizi (camelCase alanlar; `ZTIOT_SENSOR` satırları).
+Yanıt: `200 OK` + JSON dizi (camelCase alanlar). `type=readings` → `ZTIOT_SENSOR` satırları; `type=alarms` → `ZTIOT_ALARM` satırları.
+
+## Eşik alarmları
+Her POST kaydedildikten sonra okuma, cihaz eşiklerine (`ZTIOT_THRESH`) göre değerlendirilir; aşımlar `ZTIOT_ALARM`'a yazılır ve yanıttaki `alarms` sayısına yansır. Tam mantık → [`abap/alarm/README.md`](../abap/alarm/README.md).
 
 ## `OPTIONS` — CORS (yalnızca klasik handler)
 Tarayıcı tabanlı pano için `204 No Content` + CORS başlıkları döner.

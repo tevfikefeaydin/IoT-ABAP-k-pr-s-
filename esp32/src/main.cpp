@@ -103,7 +103,15 @@ static int postReading(const String& payload) {
 
   int code = http.POST(payload);
   if (code > 0) {
-    Serial.printf("[http] %d  resp=%s\n", code, http.getString().c_str());
+    String resp = http.getString();
+    Serial.printf("[http] %d  resp=%s\n", code, resp.c_str());
+    // Server reports breaches as {"...","alarms":N}. Light the LED when N>0.
+    if (code == 201) {
+      bool alarm = resp.indexOf("\"alarms\":") >= 0 &&
+                   resp.indexOf("\"alarms\":0") < 0;
+      digitalWrite(ALARM_LED_PIN, alarm ? HIGH : LOW);
+      if (alarm) Serial.println("[alarm] threshold breached — LED on");
+    }
   } else {
     Serial.printf("[http] transport error: %s\n", http.errorToString(code).c_str());
   }
@@ -117,6 +125,8 @@ void setup() {
   Serial.begin(115200);
   delay(200);
   Serial.println("\n[boot] ESP32 → ABAP IoT bridge");
+  pinMode(ALARM_LED_PIN, OUTPUT);
+  digitalWrite(ALARM_LED_PIN, LOW);
   dht.begin();
   connectWifi();
   syncTime();

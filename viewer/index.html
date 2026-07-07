@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IoT Sensör Panosu</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --panel:#ffffff; --ink:#1c2430; --muted:#6b7684;
+    --line:#e3e8ee; --accent:#2f6fed; --ok:#1e9e5a; --warn:#d98a00; --crit:#d23b3b;
+    --shadow:0 1px 3px rgba(20,30,50,.08),0 1px 2px rgba(20,30,50,.06);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0f141b; --panel:#171f2a; --ink:#e6ebf2; --muted:#93a0b0;
+      --line:#26313f; --accent:#5b8dff; --ok:#3ecb7f; --warn:#f0ad3c; --crit:#f26d6d;
+      --shadow:0 1px 3px rgba(0,0,0,.4); }
+  }
+  :root[data-theme="dark"]{ --bg:#0f141b; --panel:#171f2a; --ink:#e6ebf2; --muted:#93a0b0;
+    --line:#26313f; --accent:#5b8dff; --ok:#3ecb7f; --warn:#f0ad3c; --crit:#f26d6d;
+    --shadow:0 1px 3px rgba(0,0,0,.4); }
+  :root[data-theme="light"]{ --bg:#f4f6f8; --panel:#ffffff; --ink:#1c2430; --muted:#6b7684;
+    --line:#e3e8ee; --accent:#2f6fed; --ok:#1e9e5a; --warn:#d98a00; --crit:#d23b3b;
+    --shadow:0 1px 3px rgba(20,30,50,.08); }
+
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink)}
+  header.top{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--panel);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  header.top h1{font-size:17px;margin:0;font-weight:650}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--crit)} .dot.demo{background:var(--warn)}
+  .spacer{flex:1}
+  .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;
+    padding:7px 12px;cursor:pointer;font-size:13px}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  main{max-width:1100px;margin:0 auto;padding:20px}
+
+  details.cfg{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:18px;
+    box-shadow:var(--shadow)}
+  details.cfg>summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none}
+  details.cfg>summary::-webkit-details-marker{display:none}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:0 16px 16px}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  label.f input,label.f select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+    background:var(--bg);color:var(--ink);font-size:13px}
+  label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:13px}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+  .card .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .card .v{font-size:26px;font-weight:680;margin-top:6px}
+  .card .v small{font-size:14px;font-weight:500;color:var(--muted)}
+  .v.ok{color:var(--ok)} .v.warn{color:var(--warn)} .v.crit{color:var(--crit)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:18px;
+    box-shadow:var(--shadow);overflow:hidden}
+  .panel h2{font-size:14px;margin:0;padding:13px 16px;border-bottom:1px solid var(--line);font-weight:600;
+    display:flex;align-items:center;gap:8px}
+  .panel h2 .count{color:var(--muted);font-weight:500}
+  .chart-wrap{padding:12px 16px 16px}
+  svg.chart{width:100%;height:220px;display:block}
+  .tbl-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+  th,td{text-align:left;padding:9px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em;
+    position:sticky;top:0;background:var(--panel)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  .badge.crit{background:color-mix(in srgb,var(--crit) 18%,transparent);color:var(--crit)}
+  .val.hot{color:var(--crit);font-weight:700}
+  .empty{padding:26px 16px;color:var(--muted);text-align:center}
+  .err{background:color-mix(in srgb,var(--crit) 10%,transparent);color:var(--crit);
+    border:1px solid color-mix(in srgb,var(--crit) 30%,transparent);border-radius:10px;
+    padding:10px 14px;margin-bottom:16px;font-size:13px;display:none}
+  .muted{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="dot" id="statusDot"></span>
+  <h1>IoT Sensör Panosu</h1>
+  <span class="muted" id="statusText">—</span>
+  <span class="spacer"></span>
+  <button class="btn" id="themeBtn" title="Tema">◐</button>
+  <button class="btn primary" id="refreshBtn">Yenile</button>
+</header>
+
+<main>
+  <div class="err" id="errBox"></div>
+
+  <details class="cfg" id="cfg">
+    <summary>⚙️ Bağlantı ayarları</summary>
+    <div class="grid">
+      <label class="f">Endpoint (GET) URL
+        <input id="c_url" placeholder="https://host:44300/sap/ziot/ingest">
+      </label>
+      <label class="f">X-API-Key
+        <input id="c_key" placeholder="change-me">
+      </label>
+      <label class="f">Kullanıcı (Basic auth, ops.)
+        <input id="c_user" placeholder="ESP32_USER">
+      </label>
+      <label class="f">Parola (ops.)
+        <input id="c_pass" type="password" placeholder="••••">
+      </label>
+      <label class="f">Cihaz filtresi (ops.)
+        <input id="c_device" placeholder="esp32-coldroom-01">
+      </label>
+      <label class="f">Sıcaklık eşiği (°C)
+        <input id="c_thresh" type="number" step="0.5" value="8">
+      </label>
+      <label class="f">Kayıt sayısı (limit)
+        <input id="c_limit" type="number" value="50">
+      </label>
+      <label class="f">Oto-yenileme (sn, 0=kapalı)
+        <input id="c_interval" type="number" value="30">
+      </label>
+      <label class="f chk"><input type="checkbox" id="c_demo"> Demo modu (SAP olmadan örnek veri)</label>
+    </div>
+  </details>
+
+  <section class="cards" id="cards"></section>
+
+  <section class="panel">
+    <h2>Sıcaklık trendi <span class="count" id="chartInfo"></span></h2>
+    <div class="chart-wrap"><svg class="chart" id="chart" viewBox="0 0 800 220" preserveAspectRatio="none"></svg></div>
+  </section>
+
+  <section class="panel">
+    <h2>Aktif / Son alarmlar <span class="count" id="alarmCount"></span></h2>
+    <div class="tbl-scroll"><table id="alarmTbl"><thead><tr>
+      <th>Zaman</th><th>Cihaz</th><th>Tip</th><th>Önem</th><th>Ölçülen</th><th>Eşik</th><th>Mesaj</th>
+    </tr></thead><tbody></tbody></table></div>
+    <div class="empty" id="alarmEmpty" style="display:none">Alarm yok 🎉</div>
+  </section>
+
+  <section class="panel">
+    <h2>Son okumalar <span class="count" id="readCount"></span></h2>
+    <div class="tbl-scroll"><table id="readTbl"><thead><tr>
+      <th>Zaman (UTC)</th><th>Cihaz</th><th>Sensör</th><th>Sıcaklık</th><th>Nem</th>
+    </tr></thead><tbody></tbody></table></div>
+    <div class="empty" id="readEmpty" style="display:none">Kayıt yok</div>
+  </section>
+
+  <p class="muted">
+    Tek dosyalık, bağımsız pano. ABAP <code>GET</code> endpoint'inden okur
+    (<code>?type=readings</code> ve <code>?type=alarms</code>). Klasik SICF handler CORS başlıklarını
+    zaten döner; ABAP Cloud tarafında CORS'a izin vermeniz gerekebilir. Kimlik bilgileri yalnızca
+    bu tarayıcının <code>localStorage</code>'ında saklanır.
+  </p>
+</main>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const FIELDS = ["url","key","user","pass","device","thresh","limit","interval","demo"];
+const store = {
+  load(){ try{return JSON.parse(localStorage.getItem("iotViewerCfg")||"{}")}catch(e){return{}} },
+  save(c){ localStorage.setItem("iotViewerCfg", JSON.stringify(c)); }
+};
+let timer = null;
+
+function cfg(){
+  const c = {};
+  for(const f of FIELDS){
+    const el = $("#c_"+f);
+    c[f] = el.type === "checkbox" ? el.checked : el.value.trim();
+  }
+  return c;
+}
+function applyCfg(c){
+  for(const f of FIELDS){
+    const el = $("#c_"+f); if(!el) continue;
+    if(el.type === "checkbox") el.checked = !!c[f];
+    else if(c[f] !== undefined && c[f] !== "") el.value = c[f];
+  }
+}
+
+// ---- timestamp parsing (SAP packed yyyymmddhhmmss or ISO) -------------------
+function parseTs(v){
+  if(v===null||v===undefined) return null;
+  let s = String(v).trim();
+  if(s.includes("T") && s.includes("-")){ const d=new Date(s); return isNaN(d)?null:d; }
+  s = s.split(".")[0].replace(/[^0-9]/g,"");
+  if(s.length>=14){
+    return new Date(Date.UTC(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8),
+                            +s.slice(8,10),+s.slice(10,12),+s.slice(12,14)));
+  }
+  return null;
+}
+function fmtTs(v){ const d=parseTs(v); return d ? d.toISOString().replace("T"," ").slice(0,19) : (v??"—"); }
+const num = v => { const n = Number(v); return isNaN(n)?null:n; };
+
+// ---- data access -----------------------------------------------------------
+function buildUrl(base, type, c){
+  const u = new URL(base);
+  u.searchParams.set("type", type);
+  if(c.limit) u.searchParams.set("limit", c.limit);
+  if(c.device) u.searchParams.set("device_id", c.device);
+  return u.toString();
+}
+async function fetchJson(type, c){
+  const headers = {"Accept":"application/json"};
+  if(c.key) headers["X-API-Key"] = c.key;
+  if(c.user) headers["Authorization"] = "Basic " + btoa(c.user+":"+c.pass);
+  const res = await fetch(buildUrl(c.url, type, c), {headers, mode:"cors"});
+  if(!res.ok) throw new Error("HTTP "+res.status+" ("+type+")");
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.items || data.value || []);
+}
+
+// ---- demo data -------------------------------------------------------------
+let demoSeed = 42;
+function rnd(){ demoSeed = (demoSeed*1103515245+12345) & 0x7fffffff; return demoSeed/0x7fffffff; }
+function demoData(c){
+  const thr = num(c.thresh) ?? 8, dev = c.device || "esp32-coldroom-01";
+  const readings=[], alarms=[], now=Date.now();
+  for(let i=49;i>=0;i--){
+    const t = now - i*60000;
+    let temp = 4 + Math.sin(i/6)*2 + (rnd()-0.5)*1.5;
+    if(i%13===0) temp += 6;               // occasional spike
+    const hum = 78 + (rnd()-0.5)*10;
+    const iso = new Date(t).toISOString().replace(/[-:T]/g,"").slice(0,14);
+    readings.push({receivedAt:iso, deviceId:dev, sensorType:"DHT22",
+      temperature:+temp.toFixed(2), humidity:+hum.toFixed(2)});
+    if(temp>thr){
+      alarms.push({createdAt:iso, deviceId:dev, alarmType:"HIGH_TEMP",
+        severity: temp>thr+2?"CRIT":"WARN", measured:+temp.toFixed(2), threshold:thr,
+        message:`Temperature ${temp.toFixed(2)} above maximum ${thr.toFixed(2)}`});
+    }
+  }
+  readings.reverse(); alarms.reverse();
+  return {readings, alarms};
+}
+
+// ---- rendering -------------------------------------------------------------
+function setStatus(kind, text){
+  $("#statusDot").className = "dot "+kind;
+  $("#statusText").textContent = text;
+}
+function renderCards(readings, alarms, c){
+  const thr = num(c.thresh) ?? 8;
+  const latest = readings[0];
+  const crit = alarms.filter(a=>String(a.severity).toUpperCase()==="CRIT").length;
+  const lt = latest ? num(latest.temperature) : null;
+  const tClass = lt===null ? "" : (lt>thr ? "crit" : (lt>thr-1 ? "warn":"ok"));
+  const cards = [
+    {k:"Toplam okuma", v:readings.length, cls:""},
+    {k:"Son sıcaklık", v:(lt===null?"—":lt.toFixed(1)), unit:"°C", cls:tClass},
+    {k:"Son nem", v:(latest?num(latest.humidity).toFixed(0):"—"), unit:"%", cls:""},
+    {k:"Aktif alarm", v:alarms.length, unit:(crit?`${crit} kritik`:""), cls:alarms.length?(crit?"crit":"warn"):"ok"},
+  ];
+  $("#cards").innerHTML = cards.map(x=>`
+    <div class="card"><div class="k">${x.k}</div>
+      <div class="v ${x.cls}">${x.v}${x.unit?` <small>${x.unit}</small>`:""}</div></div>`).join("");
+}
+function renderChart(readings, c){
+  const thr = num(c.thresh) ?? 8;
+  const svg = $("#chart"), W=800, H=220, pad=28;
+  const pts = readings.slice().reverse()
+    .map(r=>({t:parseTs(r.receivedAt||r.recordedAt), y:num(r.temperature)}))
+    .filter(p=>p.y!==null);
+  $("#chartInfo").textContent = pts.length ? `${pts.length} nokta · eşik ${thr}°C` : "";
+  if(pts.length<2){ svg.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="var(--muted)">yeterli veri yok</text>`; return; }
+  const ys = pts.map(p=>p.y).concat([thr]);
+  let min=Math.min(...ys)-1, max=Math.max(...ys)+1; if(max-min<2){max=min+2;}
+  const x = i => pad + i*(W-2*pad)/(pts.length-1);
+  const y = v => H-pad - (v-min)*(H-2*pad)/(max-min);
+  const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.y).toFixed(1)}`).join(" ");
+  const area = `M${x(0)},${y(min)} `+pts.map((p,i)=>`L${x(i).toFixed(1)},${y(p.y).toFixed(1)}`).join(" ")+` L${x(pts.length-1)},${y(min)} Z`;
+  const yt = y(thr);
+  const hot = pts.map((p,i)=> p.y>thr ? `<circle cx="${x(i).toFixed(1)}" cy="${y(p.y).toFixed(1)}" r="3" fill="var(--crit)"/>`:"").join("");
+  svg.innerHTML = `
+    <line x1="${pad}" y1="${yt.toFixed(1)}" x2="${W-pad}" y2="${yt.toFixed(1)}" stroke="var(--crit)" stroke-dasharray="5 4" stroke-width="1"/>
+    <text x="${W-pad}" y="${(yt-5).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--crit)">${thr}°C</text>
+    <path d="${area}" fill="color-mix(in srgb,var(--accent) 12%,transparent)"/>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    ${hot}
+    <text x="${pad}" y="14" font-size="11" fill="var(--muted)">${max.toFixed(1)}°</text>
+    <text x="${pad}" y="${H-pad+14}" font-size="11" fill="var(--muted)">${min.toFixed(1)}°</text>`;
+}
+function renderAlarms(alarms){
+  $("#alarmCount").textContent = alarms.length ? `(${alarms.length})` : "";
+  const body = $("#alarmTbl tbody");
+  $("#alarmEmpty").style.display = alarms.length ? "none":"block";
+  $("#alarmTbl").style.display = alarms.length ? "":"none";
+  body.innerHTML = alarms.map(a=>{
+    const sev = String(a.severity||"WARN").toUpperCase();
+    return `<tr>
+      <td>${fmtTs(a.createdAt)}</td><td>${esc(a.deviceId)}</td><td>${esc(a.alarmType)}</td>
+      <td><span class="badge ${sev==="CRIT"?"crit":"warn"}">${sev}</span></td>
+      <td class="num">${fmtNum(a.measured)}</td><td class="num">${fmtNum(a.threshold)}</td>
+      <td>${esc(a.message)}</td></tr>`;
+  }).join("");
+}
+function renderReadings(readings, c){
+  const thr = num(c.thresh) ?? 8;
+  $("#readCount").textContent = readings.length ? `(${readings.length})` : "";
+  const body = $("#readTbl tbody");
+  $("#readEmpty").style.display = readings.length ? "none":"block";
+  $("#readTbl").style.display = readings.length ? "":"none";
+  body.innerHTML = readings.map(r=>{
+    const t = num(r.temperature), hot = t!==null && t>thr;
+    return `<tr>
+      <td>${fmtTs(r.receivedAt||r.recordedAt)}</td><td>${esc(r.deviceId)}</td><td>${esc(r.sensorType)}</td>
+      <td class="num ${hot?"val hot":""}">${fmtNum(r.temperature)} °C</td>
+      <td class="num">${fmtNum(r.humidity)} %</td></tr>`;
+  }).join("");
+}
+const esc = s => String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const fmtNum = v => { const n=num(v); return n===null?"—":n.toFixed(2); };
+
+// ---- orchestration ---------------------------------------------------------
+async function refresh(){
+  const c = cfg(); store.save(c);
+  $("#errBox").style.display = "none";
+  const demo = c.demo || !c.url;
+  try{
+    let readings, alarms;
+    if(demo){
+      ({readings, alarms} = demoData(c));
+      setStatus("demo","Demo modu · "+new Date().toLocaleTimeString());
+    }else{
+      [readings, alarms] = await Promise.all([fetchJson("readings",c), fetchJson("alarms",c)]);
+      setStatus("ok","Bağlı · "+new Date().toLocaleTimeString());
+    }
+    renderCards(readings, alarms, c);
+    renderChart(readings, c);
+    renderAlarms(alarms);
+    renderReadings(readings, c);
+  }catch(e){
+    setStatus("err","Hata");
+    const box = $("#errBox");
+    box.style.display="block";
+    box.innerHTML = `Veri alınamadı: ${esc(e.message)}. `+
+      `Endpoint/anahtar doğru mu, CORS açık mı? İncelemek için <b>Demo modu</b>'nu açabilirsiniz.`;
+  }
+}
+function scheduleAuto(){
+  if(timer){ clearInterval(timer); timer=null; }
+  const s = num(cfg().interval);
+  if(s && s>0) timer = setInterval(refresh, s*1000);
+}
+function applyTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  localStorage.setItem("iotViewerTheme", t);
+}
+
+// ---- init ------------------------------------------------------------------
+(function init(){
+  const saved = store.load();
+  if(!("demo" in saved)) saved.demo = true;   // first run -> demo so it renders
+  applyCfg(saved);
+  const th = localStorage.getItem("iotViewerTheme");
+  if(th) applyTheme(th);
+  if(!saved.url) $("#cfg").open = true;
+
+  $("#refreshBtn").addEventListener("click", ()=>{ refresh(); scheduleAuto(); });
+  $("#themeBtn").addEventListener("click", ()=>{
+    const cur = document.documentElement.getAttribute("data-theme");
+    applyTheme(cur==="dark"?"light":"dark");
+  });
+  for(const f of FIELDS){
+    $("#c_"+f).addEventListener("change", ()=>{ refresh(); scheduleAuto(); });
+  }
+  refresh(); scheduleAuto();
+})();
+</script>
+</body>
+</html>

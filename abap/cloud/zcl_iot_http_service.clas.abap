@@ -112,11 +112,21 @@ CLASS zcl_iot_http_service IMPLEMENTATION.
       response->set_text( `{"status":"error","message":"db insert failed"}` ).
       RETURN.
     ENDIF.
+
+    " Evaluate cold-room thresholds; breaches are persisted to ZTIOT_ALARM
+    " and committed together with the reading below.
+    DATA(lt_alarm) = zcl_iot_alarm_check=>check_reading(
+      iv_reading_id  = ls_db-reading_id
+      iv_device_id   = ls_db-device_id
+      iv_temperature = ls_db-temperature
+      iv_humidity    = ls_db-humidity ).
+
     COMMIT WORK.
 
+    DATA(lv_alarms) = lines( lt_alarm ).
     response->set_status( i_code = 201 i_reason = 'Created' ).
     response->set_content_type( 'application/json' ).
-    response->set_text( |{ `{"status":"ok","readingId":"` }{ ls_db-reading_id }{ `"}` }| ).
+    response->set_text( |\{"status":"ok","readingId":"{ ls_db-reading_id }","alarms":{ lv_alarms }\}| ).
 
   ENDMETHOD.
 
@@ -127,12 +137,39 @@ CLASS zcl_iot_http_service IMPLEMENTATION.
     DATA lt_data  TYPE STANDARD TABLE OF ztiot_sensor.
 
     DATA(lv_device)  = request->get_form_field( 'device_id' ).
-    DATA(lv_limit_c) = request->get_form_field( 'limit' ).
-    IF lv_limit_c IS NOT INITIAL.
+    DATA(lv_type)    = request->get_form_field( 'type' ).
+    DATA(lv_limit_c) = condense( request->get_form_field( 'limit' ) ).
+    " Only convert when it is purely numeric and short enough to fit an i;
+    " a non-numeric value like ?limit=abc must not raise a conversion dump.
+    IF lv_limit_c IS NOT INITIAL AND lv_limit_c CO '0123456789' AND strlen( lv_limit_c ) <= 4.
       lv_limit = lv_limit_c.
     ENDIF.
     IF lv_limit <= 0 OR lv_limit > 1000.
       lv_limit = 50.
+    ENDIF.
+
+    " GET ...?type=alarms → most recent alarms instead of readings.
+    IF lv_type = 'alarms'.
+      DATA lt_alarm TYPE STANDARD TABLE OF ztiot_alarm.
+      IF lv_device IS INITIAL.
+        SELECT * FROM ztiot_alarm
+          ORDER BY created_at DESCENDING
+          INTO TABLE @lt_alarm
+          UP TO @lv_limit ROWS.
+      ELSE.
+        SELECT * FROM ztiot_alarm
+          WHERE device_id = @lv_device
+          ORDER BY created_at DESCENDING
+          INTO TABLE @lt_alarm
+          UP TO @lv_limit ROWS.
+      ENDIF.
+      response->set_status( i_code = 200 i_reason = 'OK' ).
+      response->set_content_type( 'application/json' ).
+      response->set_text( /ui2/cl_json=>serialize(
+        data        = lt_alarm
+        pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+        compress    = abap_false ) ).
+      RETURN.
     ENDIF.
 
     IF lv_device IS INITIAL.

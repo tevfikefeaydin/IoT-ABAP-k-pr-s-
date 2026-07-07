@@ -49,10 +49,14 @@ Donanım/IoT ve kurumsal ABAP birlikte nadiren bulunan bir kombinasyondur. Bir �
 | JSON | `/ui2/cl_json` | `/ui2/cl_json` veya `XCO` |
 | Depolama | Transparent tablo `ZTIOT_SENSOR` | Aynı tablo (DDL ile) |
 | Okuma API | Handler `GET` → JSON | RAP unmanaged **custom entity** + **OData V4** |
+| Alarm | `ZCL_IOT_ALARM_CHECK` (ortak) | `ZCL_IOT_ALARM_CHECK` (ortak) |
 | UI | abap2UI5 | Fiori Elements List Report + abap2UI5 |
 | Ortam | ABAP Platform **Docker trial** | **BTP ABAP Environment (Steampunk)** |
 
-İkisi de aynı veri modelini ve aynı ESP32 firmware'ini paylaşır — yalnızca hedef URL değişir.
+İkisi de aynı veri modelini, aynı eşik alarmı mantığını ve aynı ESP32 firmware'ini paylaşır — yalnızca hedef URL değişir.
+
+## Soğuk oda eşik alarmı
+Gelen her okuma, cihaz başına yapılandırılabilir eşiklere (`ZTIOT_THRESH`) göre değerlendirilir. Aşım (ör. soğuk oda > 8 °C) `ZTIOT_ALARM`'a yazılır, POST yanıtına `"alarms":N` olarak eklenir ve ESP32 üzerindeki LED/buzzer'ı tetikler. Pano ve `?type=alarms` endpoint'i alarmları listeler. Ayrıntı → [`abap/alarm/README.md`](abap/alarm/README.md).
 
 ## Repo yapısı
 
@@ -76,9 +80,17 @@ Donanım/IoT ve kurumsal ABAP birlikte nadiren bulunan bir kombinasyondur. Bir �
 │   │   ├── zc_iot_reading.ddls.asddls
 │   │   ├── zcl_iot_reading_query.clas.abap
 │   │   └── README.md
-│   └── abap2ui5/              Pano (görselleştirme)
+│   ├── alarm/                 Soğuk oda eşik alarmı (her iki varyant)
+│   │   ├── zcl_iot_alarm_check.clas.abap   ortak değerlendirici
+│   │   ├── ztiot_thresh.tabl.{xml,asddls}  eşik konfigürasyonu
+│   │   ├── ztiot_alarm.tabl.{xml,asddls}   alarm kayıtları
+│   │   └── README.md
+│   └── abap2ui5/              Pano (okumalar + alarmlar)
 │       ├── zcl_iot_dashboard.clas.abap
 │       └── README.md
+├── viewer/                    Bağımsız tek-dosya HTML pano (SAP gerekmez)
+│   ├── index.html             demo modu + gerçek endpoint'e bağlanır
+│   └── README.md
 ├── tools/                     ESP32 olmadan test için
 │   ├── send_sample.sh         curl ile örnek POST
 │   └── simulate.py            Rastgele okuma üreten simülatör
@@ -111,8 +123,9 @@ pio run -t upload && pio device monitor
 ```
 
 ### 4. Görselleştir
-- abap2UI5: `abap/abap2ui5/README.md`
-- Fiori Elements: `abap/rap/README.md` (OData V4 service binding)
+- **En hızlı (SAP gerekmez):** `viewer/index.html`'i tarayıcıda açın — demo modunda hemen çalışır, hazır olunca endpoint'e bağlanır.
+- **abap2UI5** (SAP içinde saf-ABAP pano): `abap/abap2ui5/README.md`
+- **Fiori Elements** (OData V4 service binding): `abap/rap/README.md`
 
 ## REST sözleşmesi (özet)
 

@@ -33,6 +33,12 @@
 #define SEND_INTERVAL_MS   60000UL   // one reading per minute
 #define DHT_PIN            4         // GPIO the DHT22 data pin is wired to
 
+// ---- Alarm indicator --------------------------------------------------------
+// The ABAP endpoint returns {"...","alarms":N}. When N>0 (a threshold was
+// breached) this LED turns on. GPIO2 is the onboard LED on most ESP32 devkits;
+// wire an external LED (or buzzer) here for a cold-room panel.
+#define ALARM_LED_PIN      2
+
 // ---- TLS --------------------------------------------------------------------
 // For a first bring-up you can set INSECURE_TLS to 1 (skips cert validation).
 // For anything beyond the lab, set it to 0 and paste your server's root CA in

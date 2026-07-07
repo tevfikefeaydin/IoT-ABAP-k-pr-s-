@@ -1,7 +1,8 @@
 # ESP32 / PlatformIO
 esp32/.pio/
 esp32/.vscode/
-esp32/src/config.h        # device secrets — never commit
+# device secrets — never commit
+esp32/src/config.h
 
 # Python tooling
 __pycache__/

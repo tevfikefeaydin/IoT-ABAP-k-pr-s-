@@ -30,4 +30,5 @@ GET .../ZUI_IOT_READING_O4/IoTReading?$filter=DeviceId eq 'esp32-coldroom-01'&$c
 
 ## Notlar
 - `zc_iot_reading` element adları (ReadingId, DeviceId ...) DB alanlarıyla (READING_ID ...) birebir aynı değil; query sınıfında `SELECT ... AS readingid` alias'ları ile eşleniyor.
-- Paging (`$top`/`$skip`) ve `$count` destekli. `$filter`/`$orderby`'yi tam desteklemek için `io_request->get_filter( )` / `get_sort_elements( )` ile `WHERE`/`ORDER BY` üretin.
+- Paging (`$top`/`$skip`), `$count` ve **DeviceId filtresi** destekli: query sınıfı `io_request->get_filter( )->get_as_ranges( )` ile `DeviceId` seçim alanını / `$filter=DeviceId eq '...'` ifadesini bir range'e çevirip hem veri hem `$count` sorgusuna (`WHERE device_id IN @lr_device`) uyguluyor. Filtre yoksa range boş kalır ve tüm satırlar döner.
+- Diğer alanlarda filtre veya özel `$orderby` gerekiyorsa aynı `get_as_ranges( )` / `get_sort_elements( )` desenini genişletin.
