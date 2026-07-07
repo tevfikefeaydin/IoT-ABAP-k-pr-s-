@@ -6,6 +6,8 @@ ABAP Platform **Docker trial** (veya herhangi bir on-prem AS ABAP 7.52+) üzerin
 - `ztiot_sensor.tabl.xml` — okuma tablosu (transparent).
 - `zcl_iot_rest_handler.clas.abap` / `.clas.xml` — `IF_HTTP_EXTENSION` handler.
 
+> **Ön koşul:** Handler, eşik alarmı için `ZCL_IOT_ALARM_CHECK` sınıfını ve `ZTIOT_THRESH` / `ZTIOT_ALARM` tablolarını çağırır. Önce `abap/alarm/` altındaki nesneleri oluşturun (bkz. `abap/alarm/README.md`), sonra handler'ı aktive edin.
+
 ## Nasıl import edilir?
 
 İki yol var — **abapGit** (hızlı) veya **elle** (bağımlılıksız).

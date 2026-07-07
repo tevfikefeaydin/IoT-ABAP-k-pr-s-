@@ -6,6 +6,8 @@ BTP **ABAP Environment (Steampunk)** veya ABAP Platform (embedded Steampunk) üz
 - `ztiot_sensor.tabl.asddls` — DDL ile tanımlı database table (klasik ile aynı model).
 - `zcl_iot_http_service.clas.abap` — `IF_HTTP_SERVICE_EXTENSION` handler.
 
+> **Ön koşul:** Handler eşik alarmı için `ZCL_IOT_ALARM_CHECK` sınıfını ve `ZTIOT_THRESH` / `ZTIOT_ALARM` tablolarını çağırır. Önce `abap/alarm/` altındaki nesneleri (DDL tabloları + sınıf) oluşturun.
+
 ## Adımlar (ADT)
 
 1. **Paket:** ABAP Cloud tipinde bir paket oluşturun (örn. `ZIOT`).

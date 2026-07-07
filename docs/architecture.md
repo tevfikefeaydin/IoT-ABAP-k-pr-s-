@@ -7,8 +7,10 @@
  ────────────    ┌───────────────────┐    ───────────    ┌──────────────┐    ┌───────────┐   ┌─────────┐
   sıcaklık/nem →  │ oku → JSON kur →  │ →  HTTPS POST  →  │ handler:     │ →  │ INSERT    │ → │ abap2UI5│
                   │ NTP zaman damgası │    X-API-Key      │ auth + parse │    │ ZTIOT_    │   │ / Fiori │
-                  └───────────────────┘                   │ + validate   │    │ SENSOR    │   │ (OData) │
-                        60 sn'de bir                       └──────────────┘    └───────────┘   └─────────┘
+     LED ◀────────│ alarms>0 → LED    │ ◀── {"alarms":N}  │ + validate   │    │ SENSOR    │   │ (OData) │
+                  └───────────────────┘                   │ + eşik alarm │ →  │ ZTIOT_    │   └─────────┘
+                        60 sn'de bir                       └──────────────┘    │ ALARM     │
+                                                                               └───────────┘
 ```
 
 ## Katmanlar
@@ -31,7 +33,10 @@
 | İstek gövdesi | `request->get_cdata( )` | `request->get_text( )` |
 | Yanıt | `response->set_cdata( )` | `response->set_text( )` |
 
-Ortak mantık: **auth → parse (`/ui2/cl_json`) → validate (`deviceId`) → UUID üret → `INSERT` → JSON yanıt**. Cihaz saati yoksa sunucu zaman damgası yetkilidir.
+Ortak mantık: **auth → parse (`/ui2/cl_json`) → validate (`deviceId`) → UUID üret → `INSERT` → eşik değerlendir → `COMMIT` → JSON yanıt**. Cihaz saati yoksa sunucu zaman damgası yetkilidir.
+
+### 2b. Eşik alarmı — `ZCL_IOT_ALARM_CHECK`
+Okuma INSERT edildikten hemen sonra, COMMIT'ten önce çağrılır. `ZTIOT_THRESH`'ten (cihaza özel → `'*'` varsayılan → gömülü fallback) eşikleri okur, sıcaklık/nem sınırlarını kontrol eder ve aşımları `ZTIOT_ALARM`'a yazar. Okuma ve alarm tek COMMIT'te atomik olarak kaydedilir. Sınıf release-neutral olduğu için aynı kaynak hem klasik hem cloud sistemine deploy edilir. Ayrıntı → `abap/alarm/`.
 
 ### 3. Kalıcılık — `ZTIOT_SENSOR`
 Transparent tablo. `reading_id` (UUID) PK. Ham JSON `raw_payload`'da saklanır (denetim/yeniden işleme için). `received_at` sunucu, `recorded_at` cihaz zamanı.
@@ -47,7 +52,7 @@ Transparent tablo. `reading_id` (UUID) PK. Ham JSON `raw_payload`'da saklanır (
 - **Katmanlı auth:** SICF logon + `X-API-Key` → cihaz sırrı SAP kullanıcısından bağımsız döndürülebilir.
 
 ## Genişletme fikirleri
-- Eşik aşımında (ör. soğuk oda > 8 °C) alarm/iş akışı tetikleme (workflow / e-posta / Business Event).
+- ~~Eşik aşımında alarm~~ → **eklendi** (`abap/alarm/`). Sıradaki adım: alarm oluşunca e-posta/iş akışı/Business Event bildirimi (README'de anlatıldı).
 - Zaman serisi toplama (saatlik ortalama) için ikinci tablo + job.
 - mTLS ile cihaz kimliği (sertifika tabanlı).
 - Birden çok sensör tipi (basınç, kapı kontağı) için `sensor_type` genişletme.
